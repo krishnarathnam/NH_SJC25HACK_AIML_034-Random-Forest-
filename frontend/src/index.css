@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+.font-pixel {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 12px !important;
+}
+
+.font-pixel-large {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 24px !important;
+  line-height: 1.2 !important;
+}
+
+.font-pixel-xl {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 32px !important;
+  line-height: 1.1 !important;
+}
+
+.btn-pixel {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 10px !important;
+  padding: 8px 16px !important;
+  border: 2px solid #000 !important;
+  background-color: white !important;
+  color: black !important;
+  text-decoration: none !important;
+  display: inline-block !important;
+  box-shadow: 4px 4px 0px #000 !important;
+  transform: translateY(0) !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-pixel:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 6px 6px 0px #000 !important;
+  background-color: #f3f4f6 !important;
+}
+
+.btn-pixel:active {
+  transform: translateY(2px) !important;
+  box-shadow: 2px 2px 0px #000 !important;
+}
+
+.xp-text {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 8px !important;
+  color: #fb8500 !important;
+}
+
+.level-text {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 12px !important;
+  color: #023047 !important;
+}
+
+/* Floating up-and-down animation for the Sorty indicator */
+@keyframes floatY {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+
+.float-y {
+  animation: floatY 1.6s ease-in-out infinite;
+}
+
+/* XP peekaboo animation - monster slides up from bottom */
+@keyframes peekaboo {
+  0% { transform: translateY(100%); }
+  15% { transform: translateY(0); }
+  85% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+.xp-peekaboo {
+  animation: peekaboo 2s ease-in-out forwards;
+}
+
+/* XP number float and fade */
+@keyframes xpFloat {
+  0% { 
+    transform: translateY(0); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: translateY(-20px); 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(-40px); 
+    opacity: 0; 
+  }
+}
+
+.xp-float {
+  animation: xpFloat 2.5s ease-out forwards;
+}
+
+/* Fade in animation for modal */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Brutal/Neomorphic shadows for pixel art style */
+.shadow-brutal {
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.3);
+}
+
+.shadow-brutal-lg {
+  box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.3);
+}
+
+.drop-shadow-brutal {
+  filter: drop-shadow(4px 4px 0px rgba(0, 0, 0, 0.5));
+}
+
+.drop-shadow-glow {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Pixel box style */
+.pixel-box {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Slow pulse animation */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Slow spin animation for stars */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Border width utilities */
+.border-6 {
+  border-width: 6px;
+}
