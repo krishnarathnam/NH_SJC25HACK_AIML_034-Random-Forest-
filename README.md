@@ -1,5 +1,4 @@
 # SortIt
-(Local LLM and NLP microservice pipeline)
 
 An interactive, gamified learning platform that teaches sorting algorithms with an AI tutor, visualizations, adaptive milestones, XP/levels, and a global leaderboard. SortIt blends hands-on learning (visualizers, puzzles) with an AI tutor that adapts to your progress, detects frustration, and supports bilingual learning (English/Kannada).
 
@@ -62,8 +61,8 @@ Key frontend files:
 - Node.js 18+
 - npm 9+
 - MongoDB (local or hosted)
-- Optional: Ollama running locally with a model like `llama3.1:8b` for tutoring and evaluations
-- Optional: An emotion service at `EMOTION_URL` (see Environment)
+- Ollama running locally with a model like `llama3.1:8b` for tutoring and evaluations
+- An emotion service at `EMOTION_URL`
 
 ### 1) Backend Setup
 ```bash
@@ -75,10 +74,7 @@ Create `.env` in `backend/`:
 PORT=3001
 NODE_ENV=development
 MONGO_URI=mongodb://localhost:27017/sortit
-ACCESS_TOKEN_SECRET=replace-me
-REFRESH_TOKEN_SECRET=replace-me
 EMOTION_URL=http://localhost:8000
-# LLM endpoint defaults are in code, e.g., http://localhost:11434/api/generate
 ```
 Run the server:
 ```bash
