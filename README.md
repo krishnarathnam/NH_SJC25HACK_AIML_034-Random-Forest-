@@ -1,4 +1,5 @@
 # SortIt
+(Local LLM and NLP microservice pipeline)
 
 An interactive, gamified learning platform that teaches sorting algorithms with an AI tutor, visualizations, adaptive milestones, XP/levels, and a global leaderboard. SortIt blends hands-on learning (visualizers, puzzles) with an AI tutor that adapts to your progress, detects frustration, and supports bilingual learning (English/Kannada).
 
@@ -23,7 +24,7 @@ An interactive, gamified learning platform that teaches sorting algorithms with 
 - **Frontend**: React, Vite, React Router
 - **Backend**: Node.js, Express, Mongoose (MongoDB)
 - **Auth**: JWT access tokens (Authorization: Bearer), refresh via httpOnly cookie
-- **LLM**: Configured for local Ollama by default; swappable via env
+- **LLM**: Configured for local Ollama by default; 
 
 ## Directory Structure
 ```
@@ -118,20 +119,4 @@ The app will start (default Vite) on `http://localhost:5173` and call the backen
 - `Session` — userId, contextId, algorithm, messages[role, content, en/kn], adaptive score/level/stats, xp/xpLevel
 - `Progress` — algorithm milestones (status/xp), qualityTurns, puzzles completed, total milestone XP
 
-## Development Notes
-- Access token must be sent as `Authorization: Bearer <token>` to protected endpoints
-- Refresh token is httpOnly cookie at `/api/auth/refresh` path (`jid`) and rotated on refresh
-- XP awards:
-  - Per-turn: based on message length
-  - Milestones: burst XP when hitting a milestone
-  - Puzzles: e.g., +200 XP for correct solutions
-- Level calculation increases XP requirement per level to pace progression
 
-## Troubleshooting
-- Ensure MongoDB is running and `MONGO_URI` is correct
-- If LLM calls fail, the backend falls back gracefully where possible, but tutoring quality will degrade; make sure Ollama or your LLM endpoint is reachable
-- If emotion service is unavailable, emotion defaults to Neutral
-- CORS: backend allows `http://localhost:5173` and `http://localhost:3000` with credentials
-
-## License
-This project is provided as-is for educational purposes. Replace or add a license as appropriate for your use case.
