@@ -452,9 +452,7 @@ const LearningPage = () => {
 
         <ChatMessages messages={chatMessages} />
 
-        {/* Auto-Hint Feature */}
         <div className="relative">
-          {/* Hint Prompt Button */}
           {showHintPrompt && !showHint && (
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 animate-fade-in">
               <button
@@ -466,7 +464,6 @@ const LearningPage = () => {
             </div>
           )}
 
-          {/* Hint Display */}
           {showHint && currentHint && (
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 animate-fade-in">
               <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 shadow-lg">
@@ -500,7 +497,6 @@ const LearningPage = () => {
       <NotesHandle open={notesOpen} onToggle={() => setNotesOpen(!notesOpen)} />
       <NotesSidebar open={notesOpen} notes={notes} setNotes={setNotes} currentAlgorithm={currentAlgorithm} />
 
-      {/* Visualizer Modals */}
       {currentAlgorithm === "Selection Sort" && (
         <SelectionSortVisualizer 
           isOpen={visualizerOpen}
@@ -543,13 +539,11 @@ const LearningPage = () => {
         />
       )}
 
-      {/* Puzzle Mode - Available for all algorithms */}
       <PuzzleMode
         isOpen={puzzleOpen}
         onClose={() => setPuzzleOpen(false)}
         algorithm={currentAlgorithm}
         onXPUpdate={async (xpGained) => {
-          // Refresh session data to get updated XP
           try {
             const res = await authenticatedFetch(
               `http://localhost:3001/api/session/${contextId}`

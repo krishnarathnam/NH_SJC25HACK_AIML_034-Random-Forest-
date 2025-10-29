@@ -129,7 +129,6 @@ const Learn = () => {
           )));
         }
       } catch (e) {
-        // Leave default progress if fetch fails
       }
     };
 

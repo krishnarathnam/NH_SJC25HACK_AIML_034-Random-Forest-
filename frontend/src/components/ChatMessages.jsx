@@ -13,16 +13,13 @@ export default function ChatMessages({ messages }) {
   }, [messages])
 
   const handleSpeak = (text, messageId) => {
-    // Stop any ongoing speech
     window.speechSynthesis.cancel()
     
     if (speakingMessageId === messageId) {
-      // If already speaking this message, stop it
       setSpeakingMessageId(null)
       return
     }
 
-    // Create speech synthesis
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.9 // Slightly slower for clarity
     utterance.pitch = 1.0
@@ -77,7 +74,7 @@ export default function ChatMessages({ messages }) {
               <>
                 <div className="whitespace-pre-wrap pr-8">{message.content}</div>
                 
-                {/* TTS Button - Shows on hover */}
+                
                 {(hoveredMessageId === message.id || speakingMessageId === message.id) && !message.isLoading && (
                   <button
                     onClick={() => handleSpeak(message.content, message.id)}

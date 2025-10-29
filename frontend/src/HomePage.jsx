@@ -8,17 +8,13 @@ const HomePage = () => {
       <section 
         className="relative bg-gradient-to-br from-[#023047] via-[#012a40] to-[#001a2b] text-white min-h-[90vh] flex items-center overflow-hidden"
       >
-        {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Gradient orbs */}
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl opacity-0" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-0" style={{ animation: 'pulse 3s ease-in-out infinite 1s' }} />
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl opacity-0" style={{ animation: 'pulse 3s ease-in-out infinite 2s' }} />
         </div>
 
-        {/* Main content */}
         <div className="relative max-w-7xl mx-auto px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left: Text Content */}
           <div className="space-y-5 z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 shadow-lg">
               <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
@@ -76,13 +72,10 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Right: Animated Sorty Monster */}
           <div className="relative z-10 flex items-center justify-center">
             <div className="relative">
-              {/* Glow effect behind Sorty */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full blur-3xl opacity-50 animate-pulse" />
               
-              {/* Sorty Monster Image */}
               <img 
                 src="/loading_image.png" 
                 alt="Sorty the Monster" 
@@ -90,7 +83,6 @@ const HomePage = () => {
                 style={{ animationDuration: '3s' }}
               />
 
-              {/* Floating XP badges around Sorty */}
               <div className="absolute -top-4 -right-4 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full shadow-xl animate-bounce text-sm font-bold text-white" style={{ animationDelay: '0.5s', animationDuration: '2s' }}>
                 +50 XP
               </div>
@@ -101,7 +93,6 @@ const HomePage = () => {
                 Milestone! 🏆
               </div>
 
-              {/* Sorting visualization bars floating around */}
               <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-1">
                 <div className="w-3 h-12 bg-blue-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
                 <div className="w-3 h-16 bg-purple-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite 0.2s' }} />
