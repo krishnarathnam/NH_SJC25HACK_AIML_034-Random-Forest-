@@ -9,6 +9,10 @@ const { evaluateMilestones } = require("./mileStoneEngine.js");
 
 require("dotenv").config();
 
+
+const EMOTION_URL = process.env.EMOTION_URL || "http://localhost:8000";
+
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -20,20 +24,16 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: ["http://localhost:5173", "http://localhost:3000"],
-    credentials: true, // Allow cookies
+    credentials: true,
   })
 );
 app.use(express.json());
 
-// Auth routes
+
 app.use("/api/auth", require("./routes/auth"));
 
-// Auth middleware
 const requireAuth = require("./middleware/requireAuth");
 
-// Calculate level from total XP
-// Level 1: 0-99, Level 2: 100-249, Level 3: 250-449, etc.
-// Each level requires 50 more XP than the previous: 100, 150, 200, 250...
 function calculateLevel(totalXP) {
   let level = 1;
   let xpRequired = 100;
@@ -52,14 +52,13 @@ function calculateLevel(totalXP) {
 }
 mongoose
   .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 10000, // helpful timeout
-    family: 4, // force IPv4 (fixes some Windows/DNS issues)
+    serverSelectionTimeoutMS: 10000,
+    family: 4,
   })
   .catch((err) => {
     console.error("Mongo connection error:", err.message);
   });
 
-// --- Translation helpers using local Ollama ---
 async function translateText(text, target) {
   try {
     const to = target === "kn" ? "Kannada" : "English";
@@ -77,7 +76,6 @@ async function translateText(text, target) {
 }
 
 async function ensureBilingual(text, sourceLang) {
-  // Returns { en, kn }
   if (sourceLang === "kannada") {
     const kn = text;
     const en = await translateText(text, "en");
@@ -88,7 +86,6 @@ async function ensureBilingual(text, sourceLang) {
   return { en, kn };
 }
 
-// History
 app.get("/api/history/:contextId", requireAuth, async (req, res) => {
   try {
     const { contextId } = req.params;
@@ -126,10 +123,8 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Backend is healthy" });
 });
 
-// Get leaderboard (all users ranked by total XP)
 app.get("/api/leaderboard", async (req, res) => {
   try {
-    // Aggregate total XP for each user across all their sessions
     const leaderboard = await Session.aggregate([
       {
         $group: {
@@ -160,12 +155,9 @@ app.get("/api/leaderboard", async (req, res) => {
       {
         $sort: { totalXP: -1 }
       },
-      {
-        $limit: 100 // Top 100 users
-      }
+      { $limit: 100 }
     ]);
 
-    // Calculate levels for each user
     const leaderboardWithLevels = leaderboard.map((entry, index) => {
       const levelInfo = calculateLevel(entry.totalXP);
       return {
@@ -184,7 +176,6 @@ app.get("/api/leaderboard", async (req, res) => {
   }
 });
 
-// Get session XP/level info
 app.get("/api/session/:contextId", requireAuth, async (req, res) => {
   try {
     const { contextId } = req.params;
@@ -213,12 +204,10 @@ app.get("/api/session/:contextId", requireAuth, async (req, res) => {
   }
 });
 
-// Get user's total XP across all sessions (for navbar)
 app.get("/api/user/total-xp", requireAuth, async (req, res) => {
   try {
     const userId = req.userId;
     
-    // Aggregate total XP from all sessions
     const result = await Session.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       { $group: { _id: null, totalXP: { $sum: "$xp" } } }
@@ -241,8 +230,11 @@ app.get("/api/user/total-xp", requireAuth, async (req, res) => {
 
 app.post("/api/chat", requireAuth, async (req, res) => {
   try {
-    const { contextId, message, algorithm, learnMode, language } = req.body;
+    const { contextId, message, algorithm, learnMode, language, emotion } = req.body;
     const userId = req.userId;
+    
+    const studentEmotion = emotion || "Neutral";
+    console.log(`🎭 Student emotion: ${studentEmotion}`);
 
     if (!message)
       return res.status(400).json({ success: false, error: "Missing message" });
@@ -250,7 +242,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: "Missing contextId" });
     }
 
-    // 1) Find/Create session using findOneAndUpdate to avoid duplicate key errors
     let session = await Session.findOneAndUpdate(
       { userId, contextId },
       {
@@ -270,7 +261,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
     );
     console.log(`🔍 Chat: Session for userId=${userId}, contextId=${contextId} ready`);
 
-    // 2) Find/Create progress using findOneAndUpdate to avoid duplicate key errors
     const algoForProgress = algorithm || session.algorithm || "Selection Sort";
     let progress = await Progress.findOneAndUpdate(
       { userId, algorithm: algoForProgress },
@@ -287,7 +277,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // 2) Calculate XP for this turn (based on message length)
     const msgLen = message.length;
     let xpGainTurn = 0;
     if (msgLen > 0) {
@@ -298,7 +287,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       else xpGainTurn = 10;
     }
 
-    // 3) Evaluate student's answer against last tutor question (for adaptive scoring)
     let evalResult = null;
     const lastTutorMessage = [...session.messages].reverse().find(m => m.role === "assistant");
     if (lastTutorMessage && lastTutorMessage.content) {
@@ -314,14 +302,12 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       }
     }
 
-    // 4) Apply adaptive scoring based on evaluation
     if (evalResult && evalResult.verdict !== "skip") {
       applyScoring(session, evalResult);
       console.log(`📊 Adaptive Score Updated: ${session.score}/100 (Level: ${session.level})`);
       console.log(`   Stats - Correct: ${session.stats.correct}, Incorrect: ${session.stats.incorrect}, Partial: ${session.stats.partial}, Hints: ${session.stats.hintsUsed}, Turns: ${session.stats.turns}`);
     }
 
-    // Add student message to session history
     session.messages.push({
       role: "student",
       content: message,
@@ -329,7 +315,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       content_kn: language === "kannada" ? message : "",
     });
 
-    // Translate student message in background (non-blocking)
     const studentMsgIndex = session.messages.length - 1;
     setImmediate(async () => {
       try {
@@ -348,17 +333,13 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       }
     });
 
-    // Award XP for this turn
     session.xp = (session.xp || 0) + xpGainTurn;
     
-    // Calculate current level info
     const levelInfo = calculateLevel(session.xp);
     
     console.log(`💎 XP awarded this turn: +${xpGainTurn} (total: ${session.xp}, level: ${levelInfo.level}) for userId=${userId} contextId=${contextId}`);
     console.log(`⭐ Current Adaptive Score: ${session.score}/100 (${session.level})`);
 
-    // 5) Increment qualityTurns only if student showed good understanding
-    // Only count turns where confidence >= 0.6 OR verdict is correct/partially-correct
     if (evalResult && evalResult.verdict !== "skip") {
       const isQualityTurn = 
         evalResult.verdict === "correct" || 
@@ -373,7 +354,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       }
     }
 
-    // Evaluate against latest student message
     const {
       hit: milestoneDef,
       xp: xpDeltaMilestone,
@@ -392,7 +372,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       }
     })();
 
-    // Apply milestone XP if any
     if (xpDeltaMilestone > 0) {
       progress.totalXpFromMilestones += xpDeltaMilestone;
       session.xp = (session.xp || 0) + xpDeltaMilestone;
@@ -403,7 +382,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
     session.updatedAt = new Date();
     await session.save();
 
-    // Console log milestone progress
     try {
       console.log(
         `📊 Milestone Progress for ${algoForProgress}: ${percent}% (${
@@ -417,11 +395,9 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       }
     } catch (_) {}
 
-    // 4) Build short conversation history (last 6 messages) in the selected language
     const lastMessages = session.messages.slice(-6);
     const formattedHistory = lastMessages
       .map((m) => {
-        // Use language-specific content if available
         let content = m.content;
         if (language === "kannada" && m.content_kn) {
           content = m.content_kn;
@@ -432,7 +408,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       })
       .join("\n");
 
-    // 5) Build intelligent adaptive system prompt
     const milestonesData = require("./milestones.js");
     function getMilestones(algorithm) {
       return milestonesData[algorithm] || [];
@@ -448,7 +423,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
     });
 
     const nextMilestone = (() => {
-      // Find first pending milestone in CORRECT ORDER (from defs, not progress)
       for (const def of allMilestones) {
         const progressMilestone = progress.milestones.find(m => m.key === def.key);
         if (progressMilestone && progressMilestone.status !== "done") {
@@ -464,7 +438,6 @@ app.post("/api/chat", requireAuth, async (req, res) => {
 
     const qualityTurns = progress.qualityTurns || 0;
 
-    // Console log what concept LLM should teach
     console.log(`\n📖 TEACHING CONTEXT for ${userId}:`);
     console.log(`   Algorithm: ${algoForProgress}`);
     console.log(`   Total Turns: ${totalTurns} | Quality Turns (counted): ${qualityTurns}`);
@@ -503,11 +476,54 @@ ${
     : `**DIRECT**: Answer briefly. One step at a time.`
 }
 
-## 💙 TONE:
-- Encouraging but concise
-- Celebrate wins quickly (e.g., "Nice! ✨")
-- If frustrated → simpler hint, shorter
-- If engaged → harder question, still short
+## 💙 TONE & EMOTION-AWARE RESPONSE:
+Student's current emotion: **${studentEmotion}**
+
+${(() => {
+  switch(studentEmotion.toLowerCase()) {
+    case 'happy':
+    case 'joy':
+      return `😊 Student is HAPPY/CONFIDENT:
+- Great energy! Keep it positive and upbeat
+- Challenge them slightly more - they're ready
+- Use phrases like "Excellent!" "You're on fire!" "Keep going!"
+- Ask slightly harder follow-up questions`;
+    
+    case 'sad':
+    case 'frustrated':
+    case 'anger':
+      return `😔 Student is STRUGGLING/FRUSTRATED:
+- BE EXTRA SUPPORTIVE and gentle
+- Break down concepts into SMALLER steps
+- Use phrases like "That's okay!" "Let's take it step by step" "You're doing better than you think"
+- Simplify your next question
+- Acknowledge their effort: "I see you're trying hard"`;
+    
+    case 'fear':
+    case 'anxious':
+      return `😰 Student is ANXIOUS/UNCERTAIN:
+- Be REASSURING and calm
+- Use phrases like "Don't worry, we'll figure this out together" "There's no rush"
+- Give more hints and guidance
+- Boost confidence: "You've got this!" "Take your time"`;
+    
+    case 'surprise':
+    case 'confused':
+      return `😲 Student is SURPRISED/CONFUSED:
+- Clarify the concept gently
+- Use phrases like "Let me explain that differently" "Good question!"
+- Provide a simple example
+- Check understanding before moving forward`;
+    
+    default:  
+      return `😐 Student is NEUTRAL/FOCUSED:
+- Keep balanced approach
+- Standard encouraging tone
+- Progress steadily through concepts`;
+  }
+})()}
+
+**Adapt your tone accordingly while staying concise (1-3 sentences)!**
 
 ## 🎓 CURRENT MILESTONE (STRICT FOCUS):
 ${
@@ -550,7 +566,6 @@ ${language === "kannada"
 
 Focus: ${algoForProgress}. Make it fun and fast!`;
 
-    // 6) Generate next tutor turn
     const ollamaResponse = await axios.post(
       "http://localhost:11434/api/generate",
       {
@@ -563,7 +578,6 @@ Focus: ${algoForProgress}. Make it fun and fast!`;
     const reply =
       ollamaResponse.data?.response || "Let's think about that step by step.";
 
-    // 7) Store assistant reply and translate in background
     session.messages.push({
       role: "assistant",
       content: reply,
@@ -573,7 +587,6 @@ Focus: ${algoForProgress}. Make it fun and fast!`;
     session.updatedAt = new Date();
     await session.save();
 
-    // Translate assistant reply in background (non-blocking)
     const assistantMsgIndex = session.messages.length - 1;
     setImmediate(async () => {
       try {
@@ -592,10 +605,8 @@ Focus: ${algoForProgress}. Make it fun and fast!`;
       }
     });
 
-    // 8) Send response immediately in the requested language
     const responseText = reply;
 
-    // 9) Return AI reply + XP + adaptive + progress bar info
     return res.json({
       success: true,
       response: responseText,
@@ -623,8 +634,6 @@ Focus: ${algoForProgress}. Make it fun and fast!`;
   }
 });
 
-//milestone progress bar and xp
-// Get progress snapshot
 app.get("/api/progress/:algorithm", requireAuth, async (req, res) => {
   try {
     const { algorithm } = req.params;
@@ -656,7 +665,6 @@ app.get("/api/progress/:algorithm", requireAuth, async (req, res) => {
   }
 });
 
-// Get session XP summary
 app.get("/api/session/summary/:contextId", requireAuth, async (req, res) => {
   try {
     const { contextId } = req.params;
@@ -683,7 +691,6 @@ app.get("/api/session/summary/:contextId", requireAuth, async (req, res) => {
   }
 });
 
-// Get all user sessions with scores for dashboard
 app.get("/api/user/sessions", requireAuth, async (req, res) => {
   try {
     const userId = req.userId;
@@ -705,7 +712,6 @@ app.get("/api/user/sessions", requireAuth, async (req, res) => {
   }
 });
 
-// Generate hint based on last LLM response
 app.post("/api/generate-hint", requireAuth, async (req, res) => {
   try {
     const { lastMessage, algorithm } = req.body;
@@ -714,7 +720,6 @@ app.post("/api/generate-hint", requireAuth, async (req, res) => {
       return res.json({ success: false, hint: '' });
     }
 
-    // Use LLM to generate a short hint
     const hintPrompt = `Based on this tutor message about ${algorithm}:
 
 "${lastMessage}"
@@ -747,7 +752,6 @@ Return ONLY the hint text, no extra formatting or explanation.`;
   }
 });
 
-// Get completed puzzles for an algorithm
 app.get("/api/puzzle/completed/:algorithm", requireAuth, async (req, res) => {
   try {
     const { algorithm } = req.params;
@@ -829,21 +833,18 @@ Return ONLY a JSON object (no other text) with these exact keys:
       evaluation = { isCorrect: false, feedback: 'Could not evaluate code', hint: 'Try again' };
     }
 
-    // If correct, award XP and mark puzzle as completed
     if (evaluation.isCorrect) {
       const contextId = `algo:${algorithm}`;
       const session = await Session.findOne({ userId, contextId });
       
       if (session) {
-        session.xp = (session.xp || 0) + 200; // Puzzle XP reward
+        session.xp = (session.xp || 0) + 200; 
         await session.save();
         console.log(`🎮 Puzzle solved! +200 XP awarded to userId=${userId} for ${algorithm}`);
       }
 
-      // Mark puzzle as completed in progress
       const progress = await Progress.findOne({ userId, algorithm });
       if (progress) {
-        // Add puzzle ID to completedPuzzles if not already there
         if (!progress.completedPuzzles.includes(puzzleId)) {
           progress.completedPuzzles.push(puzzleId);
           await progress.save();
@@ -863,6 +864,34 @@ Return ONLY a JSON object (no other text) with these exact keys:
     res.status(500).json({ success: false, isCorrect: false, feedback: 'Error checking solution' });
   }
 });
+
+
+app.post("/api/emotion/predict", async (req, res) => {
+  try {
+    const { answer_text, time_gap_s } = req.body;
+
+    if (typeof answer_text !== "string" || answer_text.length === 0) {
+      return res.status(400).json({ error: "answer_text required" });
+    }
+    if (typeof time_gap_s !== "number" || time_gap_s < 0) {
+      return res.status(400).json({ error: "time_gap_s must be a non-negative number" });
+    }
+
+    const r = await axios.post(
+      `${EMOTION_URL}/predict`,
+      { answer_text, time_gap_s },
+      { timeout: 800, headers: { "Content-Type": "application/json" } }
+    );
+
+    const emotion = (r.data && r.data.emotion) ? r.data.emotion : "Neutral";
+    return res.json({ emotion });
+  } catch (err) {
+    console.error("Emotion proxy error:", err.message);
+    return res.json({ emotion: "Neutral" });
+  }
+});
+
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

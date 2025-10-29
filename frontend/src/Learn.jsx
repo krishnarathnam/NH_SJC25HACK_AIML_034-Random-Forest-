@@ -46,74 +46,96 @@ const Learn = () => {
   const zoomOut = () => setScale((s) => Math.max(0.3, s * 0.9));
   const reset = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
 
-  const roadmap = [
+  const [roadmap, setRoadmap] = useState([
     { 
       key: 'selection', 
       x: 80, y: 80, 
       name: 'Selection Sort', 
-      xp: 40, 
+      xp: 400, 
       difficulty: 'Easy', 
-      progress: 60, 
+      progress: 0, 
       desc: 'Pick the smallest each round and place it in order.',
       importance: 'Selection Sort teaches the fundamental concept of finding minimum/maximum elements. It\'s used in systems where memory writes are expensive, like flash memory, and helps understand the trade-off between comparisons and swaps.',
-      rewards: ['Selection Master Badge', '40 XP', 'Understanding of O(n²) complexity', 'Memory-efficient sorting knowledge']
+      rewards: ['Selection Master Badge', '400 XP', 'Understanding of O(n²) complexity', 'Memory-efficient sorting knowledge']
     },
     { 
       key: 'bubble', 
       x: 520, y: 500, 
       name: 'Bubble Sort', 
-      xp: 50, 
+      xp: 400, 
       difficulty: 'Easy', 
-      progress: 20, 
+      progress: 0, 
       desc: 'Swap adjacent elements to float the largest to the end.',
       importance: 'Bubble Sort is perfect for learning sorting concepts because it\'s simple to understand and visualize. While not efficient for large datasets, it\'s still used in embedded systems and educational contexts.',
-      rewards: ['Bubble Blaster Badge', '50 XP', 'Understanding of stable sorting', 'Visual sorting intuition']
+      rewards: ['Bubble Blaster Badge', '400 XP', 'Understanding of stable sorting', 'Visual sorting intuition']
     },
     { 
       key: 'insertion', 
       x: 960, y: 160, 
       name: 'Insertion Sort', 
-      xp: 70, 
+      xp: 400, 
       difficulty: 'Medium', 
       progress: 0, 
       desc: 'Insert new items into the sorted left side one-by-one.',
       importance: 'Insertion Sort is highly practical for small datasets and nearly-sorted data. It\'s used in hybrid algorithms like Timsort and is excellent for understanding adaptive sorting behavior.',
-      rewards: ['Insertion Expert Badge', '70 XP', 'Understanding of adaptive algorithms', 'Hybrid sorting knowledge']
+      rewards: ['Insertion Expert Badge', '400 XP', 'Understanding of adaptive algorithms', 'Hybrid sorting knowledge']
     },
     { 
       key: 'merge', 
       x: 1400, y: 560, 
       name: 'Merge Sort', 
-      xp: 100, 
+      xp: 400, 
       difficulty: 'Medium', 
       progress: 0, 
       desc: 'Divide into halves, sort each, and merge back together.',
       importance: 'Merge Sort is the foundation of divide-and-conquer algorithms. It\'s used in external sorting, database systems, and is guaranteed O(n log n) performance, making it crucial for understanding algorithmic efficiency.',
-      rewards: ['Merge Master Badge', '100 XP', 'Understanding of divide-and-conquer', 'Stable sorting mastery']
+      rewards: ['Merge Master Badge', '400 XP', 'Understanding of divide-and-conquer', 'Stable sorting mastery']
     },
     { 
       key: 'quick', 
       x: 1760, y: 220, 
       name: 'Quick Sort', 
-      xp: 120, 
+      xp: 400, 
       difficulty: 'Hard', 
       progress: 0, 
       desc: 'Choose a pivot and partition smaller vs bigger around it.',
       importance: 'Quick Sort is one of the most widely used sorting algorithms in practice. It\'s the default sorting algorithm in many programming languages and teaches important concepts about pivot selection and partitioning.',
-      rewards: ['Quick Sort Champion Badge', '120 XP', 'Understanding of pivot strategies', 'In-place sorting mastery']
+      rewards: ['Quick Sort Champion Badge', '400 XP', 'Understanding of pivot strategies', 'In-place sorting mastery']
     },
     { 
       key: 'heap', 
       x: 2200, y: 720, 
       name: 'Heap Sort', 
-      xp: 140, 
+      xp: 400, 
       difficulty: 'Hard', 
       progress: 0, 
       desc: 'Build a heap and remove the max repeatedly.',
       importance: 'Heap Sort combines heap data structures with sorting, teaching both concepts simultaneously. It\'s used in priority queues, operating systems, and is guaranteed O(n log n) with constant space complexity.',
-      rewards: ['Heap Hero Badge', '140 XP', 'Understanding of heap data structures', 'Priority queue mastery']
+      rewards: ['Heap Hero Badge', '400 XP', 'Understanding of heap data structures', 'Priority queue mastery']
     },
-  ];
+  ]);
+
+  // Fetch real progress for each algorithm and update the roadmap
+  useEffect(() => {
+    let cancelled = false;
+    const fetchProgressFor = async (algorithmName) => {
+      try {
+        const res = await authenticatedFetch(`http://localhost:3001/api/progress/${algorithmName}`);
+        const data = await res.json();
+        const percent = data && typeof data.percent === 'number' ? data.percent : 0;
+        if (!cancelled) {
+          setRoadmap((prev) => prev.map((item) => (
+            item.name === algorithmName ? { ...item, progress: percent } : item
+          )));
+        }
+      } catch (e) {
+      }
+    };
+
+    const algorithms = ['Selection Sort', 'Bubble Sort', 'Insertion Sort', 'Merge Sort', 'Quick Sort', 'Heap Sort'];
+    algorithms.forEach(fetchProgressFor);
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="w-full h-[calc(100vh-4rem)] bg-gray-50 relative">
