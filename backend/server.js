@@ -272,6 +272,29 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       else xpGainTurn = 10;
     }
 
+    // 3) Evaluate student's answer against last tutor question (for adaptive scoring)
+    let evalResult = null;
+    const lastTutorMessage = [...session.messages].reverse().find(m => m.role === "assistant");
+    if (lastTutorMessage && lastTutorMessage.content) {
+      try {
+        evalResult = await evaluateAnswer({
+          question: lastTutorMessage.content,
+          answer: message
+        });
+        console.log(`🎯 Answer Evaluation: ${evalResult.verdict} (confidence: ${evalResult.confidence || 'N/A'})`);
+      } catch (e) {
+        console.error("Answer evaluation error:", e.message);
+        evalResult = { verdict: "skip", reason: "error" };
+      }
+    }
+
+    // 4) Apply adaptive scoring based on evaluation
+    if (evalResult && evalResult.verdict !== "skip") {
+      applyScoring(session, evalResult);
+      console.log(`📊 Adaptive Score Updated: ${session.score}/100 (Level: ${session.level})`);
+      console.log(`   Stats - Correct: ${session.stats.correct}, Incorrect: ${session.stats.incorrect}, Partial: ${session.stats.partial}, Hints: ${session.stats.hintsUsed}, Turns: ${session.stats.turns}`);
+    }
+
     // Add student message to session history
     session.messages.push({
       role: "student",
@@ -306,6 +329,23 @@ app.post("/api/chat", requireAuth, async (req, res) => {
     const levelInfo = calculateLevel(session.xp);
     
     console.log(`💎 XP awarded this turn: +${xpGainTurn} (total: ${session.xp}, level: ${levelInfo.level}) for userId=${userId} contextId=${contextId}`);
+    console.log(`⭐ Current Adaptive Score: ${session.score}/100 (${session.level})`);
+
+    // 5) Increment qualityTurns only if student showed good understanding
+    // Only count turns where confidence >= 0.6 OR verdict is correct/partially-correct
+    if (evalResult && evalResult.verdict !== "skip") {
+      const isQualityTurn = 
+        evalResult.verdict === "correct" || 
+        evalResult.verdict === "partially-correct" ||
+        (evalResult.confidence && evalResult.confidence >= 0.6);
+      
+      if (isQualityTurn) {
+        progress.qualityTurns = (progress.qualityTurns || 0) + 1;
+        console.log(`✅ Quality Turn Count: ${progress.qualityTurns} (Good understanding shown)`);
+      } else {
+        console.log(`⚠️  Quality Turn NOT counted: Low confidence (${evalResult.confidence || 'N/A'}) or incorrect answer`);
+      }
+    }
 
     // Evaluate against latest student message
     const {
@@ -382,24 +422,49 @@ app.post("/api/chat", requireAuth, async (req, res) => {
     });
 
     const nextMilestone = (() => {
-      const pending = progress.milestones.filter((m) => m.status !== "done");
-      if (pending.length === 0) return null;
-      const firstPendingKey = pending[0].key;
-      return allMilestones.find((d) => d.key === firstPendingKey);
+      // Find first pending milestone in CORRECT ORDER (from defs, not progress)
+      for (const def of allMilestones) {
+        const progressMilestone = progress.milestones.find(m => m.key === def.key);
+        if (progressMilestone && progressMilestone.status !== "done") {
+          return def;
+        }
+      }
+      return null;
     })();
 
     const totalTurns = session.messages.filter(
       (m) => m.role === "student"
     ).length;
 
+    const qualityTurns = progress.qualityTurns || 0;
+
+    // Console log what concept LLM should teach
+    console.log(`\n📖 TEACHING CONTEXT for ${userId}:`);
+    console.log(`   Algorithm: ${algoForProgress}`);
+    console.log(`   Total Turns: ${totalTurns} | Quality Turns (counted): ${qualityTurns}`);
+    console.log(`   Completed Milestones: ${completedMilestones.length}/${allMilestones.length}`);
+    if (completedMilestones.length > 0) {
+      console.log(`   ✅ Done: ${completedMilestonesList.join(', ')}`);
+    }
+    if (nextMilestone) {
+      console.log(`   🎯 CURRENT FOCUS: "${nextMilestone.title}"`);
+      console.log(`   📊 Min Quality Turns Required: ${nextMilestone.afterTurnsMin}, Current: ${qualityTurns}`);
+      console.log(`   ${qualityTurns < nextMilestone.afterTurnsMin ? '⚠️  NOT ready yet - building concept' : '✅ Ready for demonstration'}`);
+    } else {
+      console.log(`   🎉 All milestones completed!`);
+    }
+    console.log('');
+
     let systemPrompt = `You are Sorty the Monster, a friendly, energetic AI tutor for sorting algorithms.
 
 ## 🎯 CORE RULES - READ CAREFULLY:
-1. **BE BRIEF**: Keep responses to 1-3 short sentences MAX
-2. **ONE IDEA PER TURN**: Focus on one concept at a time
-3. **ASK SHORT QUESTIONS**: Make questions simple and direct
-4. **NO REPETITION**: Don't repeat what the student already said
-5. **NO FLUFF**: Cut all unnecessary words and explanations
+1. **BE CONCISE BUT COMPLETE**: Keep responses to 5-6 lines (sentences)
+2. **STRICT MILESTONE FOCUS**: ONLY teach the current milestone. NEVER jump ahead.
+3. **RESPECT MINIMUM TURNS**: Do NOT complete milestone before afterTurnsMin turns.
+4. **ONE IDEA PER TURN**: Focus on one concept at a time
+5. **EXPLAIN THOROUGHLY**: Give enough context to understand the concept
+6. **ASK ENGAGING QUESTIONS**: Make questions interesting and thought-provoking
+7. **NO REPETITION**: Don't repeat what the student already said
 
 ## 📚 STUDENT CONTEXT:
 - Mastery: ${session.level} | XP: ${session.xp} (Lvl ${levelInfo.level})
@@ -418,16 +483,22 @@ ${
 - If frustrated → simpler hint, shorter
 - If engaged → harder question, still short
 
-## 🎓 CURRENT FOCUS:
+## 🎓 CURRENT MILESTONE (STRICT FOCUS):
 ${
   nextMilestone
-    ? `Teaching: "${nextMilestone.title}"
+    ? `**ONLY teach: "${nextMilestone.title}"**
 ${
-  totalTurns < (nextMilestone.afterTurnsMin || 0)
-    ? `→ Build concept gradually (${(nextMilestone.afterTurnsMin || 0) - totalTurns} more turns needed)`
-    : `→ Student ready. Ask them to demonstrate understanding.`
+  qualityTurns < (nextMilestone.afterTurnsMin || 0)
+    ? `⚠️ MINIMUM ${nextMilestone.afterTurnsMin} quality turns required! Current: ${qualityTurns}
+→ DO NOT rush. Build this concept gradually over ${(nextMilestone.afterTurnsMin || 0) - qualityTurns} more meaningful conversation(s).
+→ NEVER mention or teach future milestones yet.
+→ Stay focused ONLY on: "${nextMilestone.title}"
+→ Note: Only turns where student shows understanding count toward progress.`
+    : `✅ Minimum quality turns met (${qualityTurns}/${nextMilestone.afterTurnsMin})
+→ Now guide student to demonstrate understanding of: "${nextMilestone.title}"
+→ Still DO NOT move to next topic until student shows understanding.`
 }`
-    : `✅ All concepts mastered!`
+    : `✅ All milestones completed! Review and reinforce.`
 }
 
 ## 🎁 XP:
@@ -574,6 +645,28 @@ app.get("/api/session/summary/:contextId", requireAuth, async (req, res) => {
     });
   } catch (e) {
     console.error(e);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Get all user sessions with scores for dashboard
+app.get("/api/user/sessions", requireAuth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const sessions = await Session.find({ userId });
+    
+    const sessionData = sessions.map(s => ({
+      algorithm: s.algorithm,
+      contextId: s.contextId,
+      score: s.score || 50,
+      level: s.level || "intermediate",
+      xp: s.xp || 0,
+      stats: s.stats || { correct: 0, incorrect: 0, partial: 0, hintsUsed: 0, turns: 0 }
+    }));
+    
+    res.json({ success: true, sessions: sessionData });
+  } catch (e) {
+    console.error("User sessions fetch error:", e);
     res.status(500).json({ success: false });
   }
 });

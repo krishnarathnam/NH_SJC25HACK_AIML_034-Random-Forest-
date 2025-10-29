@@ -8,7 +8,7 @@ function signAccessToken(user) {
   return jwt.sign(
     { sub: user._id.toString() },
     ACCESS_TOKEN_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: '1d' }
   );
 }
 

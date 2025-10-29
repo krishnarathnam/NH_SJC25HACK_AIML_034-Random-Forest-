@@ -24,16 +24,30 @@ function lastStudentMessage(session) {
 }
 
 function turnsSinceStart(session, progress) {
-  const base = progress.turnsAtStart || 0;
-  return Math.max(0, session.messages.length - base);
+  // Use qualityTurns instead of total turns
+  // qualityTurns only counts turns where student showed understanding
+  return progress.qualityTurns || 0;
 }
 
 function evaluateMilestones({ session, progress, algorithm, xpPerMilestone = 100 }) {
   ensureProgressDoc(progress, algorithm);
 
   const defs = getList(algorithm);
-  const pending = progress.milestones.filter(m => m.status !== "done");
-  if (pending.length === 0) {
+  
+  // Find FIRST pending milestone in the CORRECT ORDER (from defs, not from progress doc)
+  let firstPendingMilestone = null;
+  let firstPendingInProgress = null;
+  
+  for (const def of defs) {
+    const progressMilestone = progress.milestones.find(m => m.key === def.key);
+    if (progressMilestone && progressMilestone.status !== "done") {
+      firstPendingMilestone = def;
+      firstPendingInProgress = progressMilestone;
+      break;
+    }
+  }
+  
+  if (!firstPendingMilestone) {
     progress.isCompleted = true;
     return { hit: null, xp: 0, percent: 100 };
   }
@@ -43,26 +57,21 @@ function evaluateMilestones({ session, progress, algorithm, xpPerMilestone = 100
 
   const turns = turnsSinceStart(session, progress);
 
-  // Check first eligible match (one per turn)
-  for (const p of pending) {
-    const def = defs.find(d => d.key === p.key);
-    if (!def) continue;
+  // Check ONLY the first pending milestone (in correct order)
+  const meetsTurns = !firstPendingMilestone.afterTurnsMin || turns >= firstPendingMilestone.afterTurnsMin;
+  const meetsDetect = firstPendingMilestone.detect ? firstPendingMilestone.detect.test(last.content) : false;
 
-    const meetsTurns = !def.afterTurnsMin || turns >= def.afterTurnsMin;
-    const meetsDetect = def.detect ? def.detect.test(last.content) : false;
+  if (meetsTurns && meetsDetect) {
+    firstPendingInProgress.status = "done";
+    firstPendingInProgress.completedAt = new Date();
+    firstPendingInProgress.xpAwarded = xpPerMilestone;
 
-    if (meetsTurns && meetsDetect) {
-      p.status = "done";
-      p.completedAt = new Date();
-      p.xpAwarded = xpPerMilestone;
+    // recompute overall
+    const pr = percent(progress, defs);
+    // if all done -> completed
+    progress.isCompleted = progress.milestones.every(m => m.status === "done");
 
-      // recompute overall
-      const pr = percent(progress, defs);
-      // if all done -> completed
-      progress.isCompleted = progress.milestones.every(m => m.status === "done");
-
-      return { hit: def, xp: xpPerMilestone, percent: pr };
-    }
+    return { hit: firstPendingMilestone, xp: xpPerMilestone, percent: pr };
   }
 
   return { hit: null, xp: 0, percent: percent(progress, defs) };

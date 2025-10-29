@@ -16,8 +16,9 @@ const ProgressSchema = new mongoose.Schema({
   isCompleted: { type: Boolean, default: false },
   totalXpFromMilestones: { type: Number, default: 0 },
 
-  // to pace milestones “in between”
+  // to pace milestones "in between"
   turnsAtStart: { type: Number, default: 0 },
+  qualityTurns: { type: Number, default: 0 }, // Only counts turns with good understanding
 }, { timestamps: true });
 
 ProgressSchema.index({ userId: 1, algorithm: 1 }, { unique: true });

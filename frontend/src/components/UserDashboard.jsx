@@ -5,6 +5,8 @@ import { getCurrentUser, authenticatedFetch } from '../utils/auth.js';
 const UserDashboard = ({ isOpen, onClose }) => {
   const [userData, setUserData] = useState(null);
   const [algorithmProgress, setAlgorithmProgress] = useState([]);
+  const [sessionScores, setSessionScores] = useState([]);
+  const [skillDistribution, setSkillDistribution] = useState({ beginner: 0, intermediate: 0, advanced: 0 });
   const [loading, setLoading] = useState(true);
   const currentUser = getCurrentUser();
 
@@ -52,6 +54,26 @@ const UserDashboard = ({ isOpen, onClose }) => {
 
       const progress = await Promise.all(progressPromises);
       setAlgorithmProgress(progress);
+
+      // Fetch session scores for skill distribution
+      try {
+        const sessionsRes = await authenticatedFetch('http://localhost:3001/api/user/sessions');
+        const sessionsData = await sessionsRes.json();
+        
+        if (sessionsData.success && sessionsData.sessions) {
+          setSessionScores(sessionsData.sessions);
+          
+          // Calculate skill level distribution based on scores
+          const distribution = { beginner: 0, intermediate: 0, advanced: 0 };
+          sessionsData.sessions.forEach(session => {
+            const level = session.level || 'intermediate';
+            distribution[level] = (distribution[level] || 0) + 1;
+          });
+          setSkillDistribution(distribution);
+        }
+      } catch (err) {
+        console.error('Failed to fetch session scores:', err);
+      }
 
       // Calculate total stats
       const totalXP = progress.reduce((sum, p) => sum + p.totalXP, 0);
@@ -273,14 +295,14 @@ const UserDashboard = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Skill Level Breakdown */}
+              {/* Performance Overview - Updated with Skill Distribution */}
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Skill Level Distribution</h3>
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Performance Overview</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="bg-green-500 text-white rounded-lg p-4 mb-2">
                       <p className="text-3xl font-bold">
-                        {algorithmProgress.filter(a => a.level === 'beginner').length}
+                        {skillDistribution.beginner}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-gray-700">Beginner</p>
@@ -288,7 +310,7 @@ const UserDashboard = ({ isOpen, onClose }) => {
                   <div className="text-center">
                     <div className="bg-yellow-500 text-white rounded-lg p-4 mb-2">
                       <p className="text-3xl font-bold">
-                        {algorithmProgress.filter(a => a.level === 'intermediate').length}
+                        {skillDistribution.intermediate}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-gray-700">Intermediate</p>
@@ -296,12 +318,24 @@ const UserDashboard = ({ isOpen, onClose }) => {
                   <div className="text-center">
                     <div className="bg-red-500 text-white rounded-lg p-4 mb-2">
                       <p className="text-3xl font-bold">
-                        {algorithmProgress.filter(a => a.level === 'advanced').length}
+                        {skillDistribution.advanced}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-gray-700">Advanced</p>
                   </div>
                 </div>
+                
+                {/* Average Score Display */}
+                {sessionScores.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gray-700">Average Adaptive Score</span>
+                      <span className="text-2xl font-bold text-[#023047]">
+                        {Math.round(sessionScores.reduce((sum, s) => sum + (s.score || 50), 0) / sessionScores.length)}/100
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
