@@ -9,6 +9,10 @@ const { evaluateMilestones } = require("./mileStoneEngine.js");
 
 require("dotenv").config();
 
+// Emotion service config (FastAPI)
+const EMOTION_URL = process.env.EMOTION_URL || "http://localhost:8000";
+
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -863,6 +867,37 @@ Return ONLY a JSON object (no other text) with these exact keys:
     res.status(500).json({ success: false, isCorrect: false, feedback: 'Error checking solution' });
   }
 });
+
+
+// === Emotion proxy (MERＮ -> FastAPI) ===
+app.post("/api/emotion/predict", async (req, res) => {
+  try {
+    const { answer_text, time_gap_s } = req.body;
+
+    if (typeof answer_text !== "string" || answer_text.length === 0) {
+      return res.status(400).json({ error: "answer_text required" });
+    }
+    if (typeof time_gap_s !== "number" || time_gap_s < 0) {
+      return res.status(400).json({ error: "time_gap_s must be a non-negative number" });
+    }
+
+    const r = await axios.post(
+      `${EMOTION_URL}/predict`,
+      { answer_text, time_gap_s },
+      { timeout: 800, headers: { "Content-Type": "application/json" } }
+    );
+
+    // Pass through emotion (with safe default)
+    const emotion = (r.data && r.data.emotion) ? r.data.emotion : "Neutral";
+    return res.json({ emotion });
+  } catch (err) {
+    console.error("Emotion proxy error:", err.message);
+    // Never break your flow during demo—fallback to Neutral
+    return res.json({ emotion: "Neutral" });
+  }
+});
+
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
