@@ -3,6 +3,18 @@ import { FaTimes, FaLightbulb, FaCheck, FaTimes as FaTimesIcon, FaTrophy, FaBolt
 import { getPuzzlesForAlgorithm } from '../data/puzzleData.js';
 import { authenticatedFetch } from '../utils/auth.js';
 
+const getAlgorithmTheme = (algo) => {
+  const map = {
+    'Bubble Sort': { from: '#FF6B6B', to: '#F06595', accent: '#FF6B6B', badgeBg: '#FFE3E3', badgeText: '#C92A2A' },
+    'Selection Sort': { from: '#F59E0B', to: '#F97316', accent: '#F59E0B', badgeBg: '#FEF3C7', badgeText: '#92400E' },
+    'Insertion Sort': { from: '#10B981', to: '#34D399', accent: '#10B981', badgeBg: '#D1FAE5', badgeText: '#065F46' },
+    'Merge Sort': { from: '#3B82F6', to: '#60A5FA', accent: '#3B82F6', badgeBg: '#DBEAFE', badgeText: '#1E40AF' },
+    'Quick Sort': { from: '#A78BFA', to: '#8B5CF6', accent: '#8B5CF6', badgeBg: '#EDE9FE', badgeText: '#5B21B6' },
+    'Heap Sort': { from: '#EC4899', to: '#F472B6', accent: '#EC4899', badgeBg: '#FCE7F3', badgeText: '#9D174D' },
+  };
+  return map[algo] || { from: '#6366F1', to: '#60A5FA', accent: '#6366F1', badgeBg: '#EEF2FF', badgeText: '#3730A3' };
+};
+
 const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
   const [puzzles, setPuzzles] = useState([]);
   const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState(0);
@@ -12,6 +24,8 @@ const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [solvedPuzzles, setSolvedPuzzles] = useState(new Set());
   const [allCompleted, setAllCompleted] = useState(false);
+
+  const theme = getAlgorithmTheme(algorithm);
 
   useEffect(() => {
     if (isOpen && algorithm) {
@@ -170,37 +184,36 @@ const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-auto pointer-events-auto"
+          className="bg-white w-[85%] max-w-3xl max-h-[90vh] overflow-auto pointer-events-auto"
+          style={{ borderRadius: '4px', boxShadow: '0 0 0 1px rgba(0,0,0,0.05), 0 20px 40px rgba(0,0,0,0.15)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white p-6 rounded-t-2xl z-10 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <FaTrophy className="text-3xl" />
-                <div>
-                  <h2 className="text-2xl font-bold">Puzzle Mode</h2>
-                  <p className="text-sm opacity-90">{algorithm}</p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <FaTimes className="text-xl" />
-              </button>
+          <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Puzzle Mode</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{algorithm}</p>
             </div>
-            
-            {/* Progress Bar */}
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+              aria-label="Close"
+            >
+              <FaTimes className="text-gray-400" />
+            </button>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="px-8 py-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold">Progress:</span>
-              <div className="flex-1 bg-white/30 rounded-full h-3 overflow-hidden">
+              <span className="text-xs font-semibold text-gray-700">Progress</span>
+              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-white h-full transition-all duration-500"
-                  style={{ width: `${(solvedPuzzles.size / puzzles.length) * 100}%` }}
+                  className="h-full transition-all duration-500"
+                  style={{ width: `${(solvedPuzzles.size / puzzles.length) * 100}%`, backgroundColor: theme.accent }}
                 />
               </div>
-              <span className="text-sm font-bold">{solvedPuzzles.size}/{puzzles.length}</span>
+              <span className="text-xs font-medium text-gray-600">{solvedPuzzles.size}/{puzzles.length}</span>
             </div>
           </div>
 
@@ -250,8 +263,8 @@ const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
                   
                   {/* XP Reward Badge */}
                   {!solvedPuzzles.has(currentPuzzle.id) && (
-                    <div className="mt-3 inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1 rounded-lg">
-                      <FaBolt className="text-yellow-500" />
+                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-lg" style={{ backgroundColor: theme.badgeBg, color: theme.badgeText }}>
+                      <FaBolt style={{ color: theme.accent }} />
                       <span className="font-semibold">+{currentPuzzle.xpReward} XP Reward</span>
                     </div>
                   )}
@@ -281,35 +294,34 @@ const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
                 {showHint ? 'Hide Hint' : 'Show Hint'}
               </button>
               {showHint && (
-                <div className="mt-2 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
+                <div className="mt-2 p-3 bg-gray-50 rounded" style={{ borderLeft: `3px solid ${theme.accent}` }}>
                   <p className="text-sm text-gray-700">{currentPuzzle.hint}</p>
                 </div>
               )}
             </div>
 
-            {/* Result Message */}
             {result && (
-              <div className={`mb-4 p-4 rounded-xl border-2 ${
+              <div className={`mb-4 p-3 rounded border ${
                 result.success 
-                  ? 'bg-green-50 border-green-400 text-green-800' 
-                  : 'bg-red-50 border-red-400 text-red-800'
+                  ? 'bg-green-50 border-green-200 text-green-800' 
+                  : 'bg-red-50 border-red-200 text-red-800'
               }`}>
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2">
                   {result.success ? (
-                    <FaCheck className="text-2xl text-green-600 flex-shrink-0 mt-1" />
+                    <FaCheck className="text-lg flex-shrink-0 mt-0.5" />
                   ) : (
-                    <FaTimesIcon className="text-2xl text-red-600 flex-shrink-0 mt-1" />
+                    <FaTimesIcon className="text-lg flex-shrink-0 mt-0.5" />
                   )}
                   <div className="flex-1">
-                    <p className="font-bold text-lg mb-1">{result.message}</p>
+                    <p className="font-semibold text-sm mb-1">{result.message}</p>
                     {result.xpGained && (
-                      <p className="text-sm flex items-center gap-2 mt-2">
+                      <p className="text-xs flex items-center gap-1 mt-1">
                         <FaBolt className="text-yellow-500" />
-                        <span className="font-semibold">+{result.xpGained} XP earned!</span>
+                        <span className="font-medium">+{result.xpGained} XP earned!</span>
                       </p>
                     )}
                     {result.hint && !result.success && (
-                      <p className="text-sm mt-2 text-gray-700">💡 {result.hint}</p>
+                      <p className="text-xs mt-1 text-gray-700">💡 {result.hint}</p>
                     )}
                   </div>
                 </div>
@@ -321,14 +333,16 @@ const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
                   {result?.success && !result?.allComplete ? (
                     <button
                       onClick={handleNextPuzzle}
-                      className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-3 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-lg hover:shadow-xl"
+                      className="flex-1 px-6 py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-medium transition-colors"
+                      style={{ borderRadius: '3px' }}
                     >
                       Next Puzzle →
                     </button>
                   ) : result?.allComplete ? (
                     <button
                       onClick={onClose}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+                      className="flex-1 px-6 py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-medium transition-colors"
+                      style={{ borderRadius: '3px' }}
                     >
                       🏆 Finish & Close
                     </button>
@@ -337,13 +351,15 @@ const PuzzleMode = ({ isOpen, onClose, algorithm, onXPUpdate }) => {
                       <button
                         onClick={handleSubmit}
                         disabled={loading || solvedPuzzles.has(currentPuzzle.id)}
-                        className="flex-1 bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white font-bold py-3 px-6 rounded-xl hover:from-[#F7931E] hover:to-[#FF6B35] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                        className="flex-1 px-6 py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderRadius: '3px' }}
                       >
                         {loading ? 'Checking...' : solvedPuzzles.has(currentPuzzle.id) ? 'Already Solved ✅' : 'Submit Solution'}
                       </button>
                       <button
                         onClick={() => setUserCode(currentPuzzle.starterCode)}
-                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all"
+                        className="px-5 py-2.5 border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors"
+                        style={{ borderRadius: '3px' }}
                       >
                         Reset Code
                       </button>
