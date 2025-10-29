@@ -6,41 +6,109 @@ const HomePage = () => {
     <div className="w-full">
       
       <section 
-        className="bg-gradient-to-br from-[#023047] via-[#012c43] to-[#023047] text-white min-h-[75vh] flex items-center relative overflow-hidden"
-        style={{
-          backgroundImage: `
-            radial-gradient(rgba(145, 145, 145, 0.3) 1px, transparent 1px),
-            linear-gradient(to bottom right, #023047, #012c43, #023047)
-          `,
-          backgroundSize: '24px 24px, 100% 100%',
-        }}
+        className="relative bg-gradient-to-br from-[#023047] via-[#012a40] to-[#001a2b] text-white min-h-[90vh] flex items-center overflow-hidden"
       >
-       
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-16">
-          <div className="text-center">
-            <h1 className="text-6xl md:text-8xl font-bold font-pixel-xl mb-6">SORTIT QUEST</h1>
-            <p className="text-xl md:text-2xl mb-4 opacity-90 max-w-4xl mx-auto">Master sorting algorithms through interactive quests and earn XP!</p>
-            <p className="text-lg mb-6 opacity-80 max-w-3xl mx-auto">Join Sorty the Monster on an epic journey to restore order to the chaotic land of unsorted arrays.</p>
-            <p className="text-base mb-8 opacity-75 max-w-2xl mx-auto">Each quest teaches you a different sorting technique through hands-on practice, visual demonstrations, and Socratic questioning. No boring lectures - just pure learning adventure!</p>
-            
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 rounded-full shadow-lg">
-                <span className="text-white font-bold">⚡</span>
-                <span className="text-sm text-white font-semibold">Earn XP</span>
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Gradient orbs */}
+          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        {/* Main content */}
+        <div className="relative max-w-7xl mx-auto px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Left: Text Content */}
+          <div className="space-y-5 z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 shadow-lg">
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-xs font-semibold">AI-Powered Socratic Learning</span>
+            </div>
+
+            <div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-3">
+                Master Sorting
+                <br />
+                <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Through Discovery
+                </span>
+              </h1>
+              <p className="text-base md:text-lg text-gray-200 leading-relaxed">
+                Join <span className="font-bold text-cyan-300">Sorty the Monster</span> on an epic journey to restore order to chaotic unsorted arrays!
+              </p>
+            </div>
+
+            <p className="text-sm md:text-base text-gray-300 leading-relaxed">
+              Learn sorting algorithms through adaptive AI questioning, interactive visualizations, and hands-on practice. No boring lectures — just pure discovery.
+            </p>
+
+            {/* Feature badges */}
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-500/90 to-pink-500/90 rounded-full shadow-lg backdrop-blur-sm">
+                <span className="text-white text-base">⚡</span>
+                <span className="text-xs text-white font-semibold">Earn XP</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full shadow-lg">
-                <span className="text-white font-bold">🏆</span>
-                <span className="text-sm text-white font-semibold">Collect Badges</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500/90 to-cyan-500/90 rounded-full shadow-lg backdrop-blur-sm">
+                <span className="text-white text-base">🏆</span>
+                <span className="text-xs text-white font-semibold">Unlock Milestones</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg">
-                <span className="text-white font-bold">🎮</span>
-                <span className="text-sm text-white font-semibold">Interactive Learning</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/90 to-teal-500/90 rounded-full shadow-lg backdrop-blur-sm">
+                <span className="text-white text-base">🎮</span>
+                <span className="text-xs text-white font-semibold">Interactive Quests</span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="#quests" className="btn-pixel">START QUEST</a>
-              <a href="#about" className="px-6 py-3 rounded-lg border-2 border-white/30 text-white hover:bg-white/10 transition-colors font-pixel text-sm">LEARN MORE</a>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a 
+                href="#quests" 
+                className="group relative px-6 py-3 bg-white text-[#023047] font-bold text-sm rounded-xl hover:scale-105 transition-all duration-300 shadow-2xl shadow-blue-500/50 text-center"
+              >
+                <span className="relative z-10">START YOUR QUEST</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </a>
+              <a 
+                href="#about" 
+                className="px-6 py-3 rounded-xl border-2 border-white/30 text-white text-sm font-semibold hover:bg-white/10 transition-all duration-300 text-center backdrop-blur-sm"
+              >
+                HOW IT WORKS
+              </a>
+            </div>
+          </div>
+
+          {/* Right: Animated Sorty Monster */}
+          <div className="relative z-10 flex items-center justify-center">
+            <div className="relative">
+              {/* Glow effect behind Sorty */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full blur-3xl opacity-50 animate-pulse" />
+              
+              {/* Sorty Monster Image */}
+              <img 
+                src="/loading_image.png" 
+                alt="Sorty the Monster" 
+                className="relative w-80 h-80 md:w-96 md:h-96 object-contain drop-shadow-2xl animate-bounce"
+                style={{ animationDuration: '3s' }}
+              />
+
+              {/* Floating XP badges around Sorty */}
+              <div className="absolute -top-4 -right-4 px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full shadow-xl animate-bounce text-sm font-bold text-white" style={{ animationDelay: '0.5s', animationDuration: '2s' }}>
+                +50 XP
+              </div>
+              <div className="absolute top-1/4 -left-8 px-3 py-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-xl animate-bounce text-xs font-bold text-white" style={{ animationDelay: '1s', animationDuration: '2.5s' }}>
+                Level Up! 🎯
+              </div>
+              <div className="absolute bottom-1/4 -right-8 px-3 py-2 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full shadow-xl animate-bounce text-xs font-bold text-white" style={{ animationDelay: '1.5s', animationDuration: '2.2s' }}>
+                Milestone! 🏆
+              </div>
+
+              {/* Sorting visualization bars floating around */}
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-1">
+                <div className="w-3 h-12 bg-blue-400 rounded animate-pulse" />
+                <div className="w-3 h-16 bg-purple-400 rounded animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="w-3 h-8 bg-pink-400 rounded animate-pulse" style={{ animationDelay: '0.4s' }} />
+                <div className="w-3 h-20 bg-cyan-400 rounded animate-pulse" style={{ animationDelay: '0.6s' }} />
+                <div className="w-3 h-14 bg-green-400 rounded animate-pulse" style={{ animationDelay: '0.8s' }} />
+              </div>
             </div>
           </div>
         </div>

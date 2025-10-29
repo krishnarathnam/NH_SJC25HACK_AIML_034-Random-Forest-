@@ -1,18 +1,51 @@
-import _React, { useState } from 'react';
+import _React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiMenu, FiX, FiLogOut, FiUser } from 'react-icons/fi';
 import { FaUserCircle } from 'react-icons/fa';
-import { getCurrentUser, logout } from './utils/auth.js';
+import { getCurrentUser, logout, authenticatedFetch } from './utils/auth.js';
 import UserDashboard from './components/UserDashboard.jsx';
 
-const NavBar = ({ xpLevel = 1, currentLevelXP = 0, xpForNextLevel = 100, totalXP = 0 }) => {
+const NavBar = () => {
   const [nav, setNav] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const user = getCurrentUser();
   
+  // State for total XP across all sessions
+  const [xpData, setXpData] = useState({
+    xpLevel: 1,
+    currentLevelXP: 0,
+    xpForNextLevel: 100,
+    totalXP: 0
+  });
+
+  // Fetch user's total XP on mount
+  useEffect(() => {
+    async function fetchTotalXP() {
+      try {
+        const res = await authenticatedFetch('http://localhost:3001/api/user/total-xp');
+        const data = await res.json();
+        setXpData({
+          xpLevel: data.xpLevel || 1,
+          currentLevelXP: data.currentLevelXP || 0,
+          xpForNextLevel: data.xpForNextLevel || 100,
+          totalXP: data.totalXP || 0
+        });
+      } catch (error) {
+        console.error('Failed to fetch total XP:', error);
+      }
+    }
+    
+    if (user) {
+      fetchTotalXP();
+      // Refresh total XP every 5 seconds to stay updated
+      const interval = setInterval(fetchTotalXP, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+  
   // Calculate progress percentage for the current level
-  const progressPercent = xpForNextLevel > 0 ? Math.min(100, (currentLevelXP / xpForNextLevel) * 100) : 0;
+  const progressPercent = xpData.xpForNextLevel > 0 ? Math.min(100, (xpData.currentLevelXP / xpData.xpForNextLevel) * 100) : 0;
   
   const handleLogout = () => {
     setProfileDropdown(false);
@@ -50,7 +83,7 @@ const NavBar = ({ xpLevel = 1, currentLevelXP = 0, xpForNextLevel = 100, totalXP
 
           </div>
 
-          <ul className="hidden md:flex items-center gap-6 text-sm text-gray-700">
+          <ul className="hidden md:flex items-center gap-6 text-m text-gray-700">
             {navItems.map((item) => (
               <li key={item.id}>
                 {item.to.startsWith('#') ? (
@@ -64,11 +97,11 @@ const NavBar = ({ xpLevel = 1, currentLevelXP = 0, xpForNextLevel = 100, totalXP
 
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-2 px-2 py-1 rounded-md bg-white/90 border border-gray-300">
-              <span className="level-text text-xs">LVL {xpLevel}</span>
+              <span className="level-text text-xs">LVL {xpData.xpLevel}</span>
               <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <div className="h-full bg-[#8B5CF6] transition-all duration-300" style={{ width: `${progressPercent}%` }}></div>
               </div>
-              <span className="xp-text text-xs">{totalXP} XP</span>
+              <span className="xp-text text-xs">{xpData.totalXP} XP</span>
             </div>
 
             {/* User Profile Dropdown */}

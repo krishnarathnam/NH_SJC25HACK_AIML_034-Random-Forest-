@@ -213,6 +213,32 @@ app.get("/api/session/:contextId", requireAuth, async (req, res) => {
   }
 });
 
+// Get user's total XP across all sessions (for navbar)
+app.get("/api/user/total-xp", requireAuth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Aggregate total XP from all sessions
+    const result = await Session.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      { $group: { _id: null, totalXP: { $sum: "$xp" } } }
+    ]);
+    
+    const totalXP = result.length > 0 ? result[0].totalXP : 0;
+    const levelInfo = calculateLevel(totalXP);
+    
+    return res.json({
+      xpLevel: levelInfo.level,
+      currentLevelXP: levelInfo.currentLevelXP,
+      xpForNextLevel: levelInfo.xpForNextLevel,
+      totalXP: totalXP,
+    });
+  } catch (e) {
+    console.error("Total XP fetch error:", e);
+    return res.status(500).json({ error: "Failed to fetch total XP" });
+  }
+});
+
 app.post("/api/chat", requireAuth, async (req, res) => {
   try {
     const { contextId, message, algorithm, learnMode, language } = req.body;
@@ -505,8 +531,16 @@ ${
 ${xpGainTurn >= 8 ? `+${xpGainTurn} XP! Start with brief praise (2-3 words).` : ""}
 ${milestoneDef ? `🎯 Milestone hit: "${milestoneDef.title}" - Say "Nice!" and move on.` : ""}
 
-## 🌐 LANGUAGE:
-${language === "kannada" ? "Respond in simple Kannada." : "Respond in simple English."}
+## 🌐 LANGUAGE - CRITICAL:
+${language === "kannada" 
+  ? `**KANNADA ONLY**: Your ENTIRE response must be in Kannada script (ಕನ್ನಡ). 
+   - NO English words or phrases allowed
+   - NO mixing languages
+   - Use ONLY Kannada characters
+   - Technical terms can stay in English but write in Kannada script if possible` 
+  : `**ENGLISH ONLY**: Your ENTIRE response must be in English.
+   - NO Kannada words or phrases
+   - NO mixing languages`}
 
 **YOUR RESPONSE MUST BE:**
 - Maximum 1-3 sentences
