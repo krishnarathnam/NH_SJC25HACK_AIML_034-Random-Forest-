@@ -17,9 +17,10 @@ import HeapSortVisualizer from './components/HeapSortVisualizer.jsx'
 import PuzzleMode from './components/PuzzleMode.jsx'
 import algorithmData from './data/algorithmData.js'
 import useSpeechRecognition from './hooks/useSpeechRecognition.js'
+import { useTimeGap } from './hooks/useTimeGap.js'
 import { authenticatedFetch, getAccessToken } from './utils/auth.js'
 
-const LearningPage = ({ setXpData }) => {
+const LearningPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -99,6 +100,9 @@ const LearningPage = ({ setXpData }) => {
   
   const { supported, isListening, text, start, stop, reset } = useSpeechRecognition({ language })
   useEffect(() => { if (text) setUserInput(text) }, [text])
+  
+  // Time gap tracking for emotion detection
+  const { markQuestionShown, computeGapSeconds } = useTimeGap();
 
   // Auto-hint timer: Show hint prompt after 15 seconds of inactivity
   useEffect(() => {
@@ -131,14 +135,6 @@ const LearningPage = ({ setXpData }) => {
           `http://localhost:3001/api/session/${contextId}`
         );
         const data = await res.json();
-        if (setXpData && typeof data.xpLevel === 'number') {
-          setXpData({
-            xpLevel: data.xpLevel,
-            currentLevelXP: data.currentLevelXP || 0,
-            xpForNextLevel: data.xpForNextLevel || 100,
-            totalXP: data.totalXP || 0
-          });
-        }
         // Update local session XP
         setSessionXp(data.totalXP || 0);
       } catch (e) {
@@ -146,7 +142,7 @@ const LearningPage = ({ setXpData }) => {
       }
     }
     fetchSessionData();
-  }, [contextId, setXpData]);
+  }, [contextId]);
 
   // Fetch progress data on mount
   useEffect(() => {
@@ -262,6 +258,34 @@ const LearningPage = ({ setXpData }) => {
 
     try {
       const token = getAccessToken();
+      
+      // 1. Detect emotion based on answer and time gap
+      let detectedEmotion = "Neutral";
+      try {
+        const timeGap = computeGapSeconds();
+        console.log(`🎭 Detecting emotion... Time gap: ${timeGap.toFixed(2)}s`);
+        
+        const emotionRes = await fetch("http://localhost:3001/api/emotion/predict", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            answer_text: toSend,
+            time_gap_s: timeGap
+          }),
+        });
+        
+        const emotionData = await emotionRes.json();
+        detectedEmotion = emotionData.emotion || "Neutral";
+        console.log(`🎭 Detected emotion: ${detectedEmotion}`);
+      } catch (emotionErr) {
+        console.warn("⚠️  Emotion detection failed, using Neutral:", emotionErr.message);
+        // Continue with Neutral emotion
+      }
+      
+      // 2. Send chat message with emotion
       const response = await fetch("http://localhost:3001/api/chat", {
         method: "POST",
         headers: {
@@ -274,6 +298,7 @@ const LearningPage = ({ setXpData }) => {
           algorithm: currentAlgorithm,
           learnMode,
           language,
+          emotion: detectedEmotion,
         }),
       });
 
@@ -291,6 +316,9 @@ const LearningPage = ({ setXpData }) => {
         // Store last bot message for hint generation
         setLastBotMessage(data.response);
         
+        // Mark question shown for time gap tracking
+        markQuestionShown();
+        
         // Hide any existing hints when new message arrives
         setShowHintPrompt(false);
         setShowHint(false);
@@ -300,16 +328,6 @@ const LearningPage = ({ setXpData }) => {
         if (typeof data.xpGain === 'number' && data.xpGain > 0) {
           setXpPeekaboo(data.xpGain);
           setTimeout(() => setXpPeekaboo(null), 2000);
-        }
-
-        // Update global XP data for navbar
-        if (setXpData && typeof data.xpLevel === 'number') {
-          setXpData({
-            xpLevel: data.xpLevel,
-            currentLevelXP: data.currentLevelXP || 0,
-            xpForNextLevel: data.xpForNextLevel || 100,
-            totalXP: data.totalXP || 0
-          });
         }
 
         // Update session XP and progress
@@ -537,16 +555,6 @@ const LearningPage = ({ setXpData }) => {
               `http://localhost:3001/api/session/${contextId}`
             );
             const data = await res.json();
-            
-            if (setXpData) {
-              setXpData({
-                xpLevel: data.xpLevel,
-                currentLevelXP: data.currentLevelXP,
-                xpForNextLevel: data.xpForNextLevel,
-                totalXP: data.totalXP
-              });
-            }
-            
             console.log(`🎮 Puzzle completed! +${xpGained} XP. Total: ${data.totalXP}`);
           } catch (error) {
             console.error('Failed to refresh XP:', error);

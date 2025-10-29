@@ -245,8 +245,12 @@ app.get("/api/user/total-xp", requireAuth, async (req, res) => {
 
 app.post("/api/chat", requireAuth, async (req, res) => {
   try {
-    const { contextId, message, algorithm, learnMode, language } = req.body;
+    const { contextId, message, algorithm, learnMode, language, emotion } = req.body;
     const userId = req.userId;
+    
+    // Extract emotion (default to Neutral if not provided)
+    const studentEmotion = emotion || "Neutral";
+    console.log(`🎭 Student emotion: ${studentEmotion}`);
 
     if (!message)
       return res.status(400).json({ success: false, error: "Missing message" });
@@ -507,11 +511,54 @@ ${
     : `**DIRECT**: Answer briefly. One step at a time.`
 }
 
-## 💙 TONE:
-- Encouraging but concise
-- Celebrate wins quickly (e.g., "Nice! ✨")
-- If frustrated → simpler hint, shorter
-- If engaged → harder question, still short
+## 💙 TONE & EMOTION-AWARE RESPONSE:
+Student's current emotion: **${studentEmotion}**
+
+${(() => {
+  switch(studentEmotion.toLowerCase()) {
+    case 'happy':
+    case 'joy':
+      return `😊 Student is HAPPY/CONFIDENT:
+- Great energy! Keep it positive and upbeat
+- Challenge them slightly more - they're ready
+- Use phrases like "Excellent!" "You're on fire!" "Keep going!"
+- Ask slightly harder follow-up questions`;
+    
+    case 'sad':
+    case 'frustrated':
+    case 'anger':
+      return `😔 Student is STRUGGLING/FRUSTRATED:
+- BE EXTRA SUPPORTIVE and gentle
+- Break down concepts into SMALLER steps
+- Use phrases like "That's okay!" "Let's take it step by step" "You're doing better than you think"
+- Simplify your next question
+- Acknowledge their effort: "I see you're trying hard"`;
+    
+    case 'fear':
+    case 'anxious':
+      return `😰 Student is ANXIOUS/UNCERTAIN:
+- Be REASSURING and calm
+- Use phrases like "Don't worry, we'll figure this out together" "There's no rush"
+- Give more hints and guidance
+- Boost confidence: "You've got this!" "Take your time"`;
+    
+    case 'surprise':
+    case 'confused':
+      return `😲 Student is SURPRISED/CONFUSED:
+- Clarify the concept gently
+- Use phrases like "Let me explain that differently" "Good question!"
+- Provide a simple example
+- Check understanding before moving forward`;
+    
+    default: // Neutral
+      return `😐 Student is NEUTRAL/FOCUSED:
+- Keep balanced approach
+- Standard encouraging tone
+- Progress steadily through concepts`;
+  }
+})()}
+
+**Adapt your tone accordingly while staying concise (1-3 sentences)!**
 
 ## 🎓 CURRENT MILESTONE (STRICT FOCUS):
 ${

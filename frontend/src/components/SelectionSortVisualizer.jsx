@@ -9,6 +9,7 @@ const SelectionSortVisualizer = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(0);
   const [description, setDescription] = useState('Click "Next" to begin sorting!');
   const [isComplete, setIsComplete] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Generate random array on mount or reset
   const generateArray = () => {
@@ -32,6 +33,18 @@ const SelectionSortVisualizer = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
+  // TTS function to speak description
+  const speakDescription = (text) => {
+    if (isMuted) return;
+    
+    window.speechSynthesis.cancel(); // Stop any ongoing speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    window.speechSynthesis.speak(utterance);
+  };
+
   // Selection Sort Algorithm - one step at a time
   const handleNext = () => {
     if (isComplete) {
@@ -49,7 +62,9 @@ const SelectionSortVisualizer = ({ isOpen, onClose }) => {
     
     if (passIndex >= n - 1) {
       // Sorting complete
-      setDescription('✅ Sorting Complete! Click "Next" to generate a new array.');
+      const desc = '✅ Sorting Complete! Click "Next" to generate a new array.';
+      setDescription(desc);
+      speakDescription(desc);
       setSorted([...Array(n).keys()]);
       setIsComplete(true);
       setComparing([]);
@@ -61,7 +76,9 @@ const SelectionSortVisualizer = ({ isOpen, onClose }) => {
     // Find minimum in remaining unsorted portion
     if (currentStep === 0) {
       // Start new pass
-      setDescription(`Pass ${passIndex + 1}: Finding minimum in unsorted portion...`);
+      const desc = `Pass ${passIndex + 1}: Finding minimum in unsorted portion...`;
+      setDescription(desc);
+      speakDescription(desc);
       setCurrentIndex(passIndex);
       setMinIndex(passIndex);
       setComparing([passIndex]);
@@ -78,21 +95,28 @@ const SelectionSortVisualizer = ({ isOpen, onClose }) => {
       
       if (arr[scanIndex] < arr[minIndex]) {
         setMinIndex(scanIndex);
-        setDescription(`Found new minimum: ${arr[scanIndex]} at index ${scanIndex}`);
+        const desc = `Found new minimum: ${arr[scanIndex]} at index ${scanIndex}`;
+        setDescription(desc);
+        speakDescription(desc);
       } else {
-        setDescription(`Comparing: ${arr[scanIndex]} >= ${arr[minIndex]} (current min)`);
+        const desc = `Comparing: ${arr[scanIndex]} >= ${arr[minIndex]} (current min)`;
+        setDescription(desc);
+        speakDescription(desc);
       }
       
       setStep(currentStep + 1);
     } else {
       // Swap minimum with first unsorted element
+      let desc;
       if (minIndex !== passIndex) {
-        setDescription(`Swapping ${arr[passIndex]} and ${arr[minIndex]} (minimum)`);
+        desc = `Swapping ${arr[passIndex]} and ${arr[minIndex]} (minimum)`;
         [arr[passIndex], arr[minIndex]] = [arr[minIndex], arr[passIndex]];
         setArray(arr);
       } else {
-        setDescription(`${arr[passIndex]} is already in correct position`);
+        desc = `${arr[passIndex]} is already in correct position`;
       }
+      setDescription(desc);
+      speakDescription(desc);
       
       sortedIndices.push(passIndex);
       setSorted(sortedIndices);
@@ -216,6 +240,27 @@ const SelectionSortVisualizer = ({ isOpen, onClose }) => {
                 <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
               </svg>
               Reset
+            </button>
+
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className={`px-6 py-3 font-semibold rounded-lg transition-colors shadow-lg flex items-center gap-2 ${
+                isMuted 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+              }`}
+              title={isMuted ? 'Unmute narration' : 'Mute narration'}
+            >
+              {isMuted ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                </svg>
+              )}
+              {isMuted ? 'Muted' : 'Audio On'}
             </button>
           </div>
         </div>

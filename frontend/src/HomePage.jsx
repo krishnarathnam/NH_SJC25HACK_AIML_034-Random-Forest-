@@ -9,11 +9,11 @@ const HomePage = () => {
         className="relative bg-gradient-to-br from-[#023047] via-[#012a40] to-[#001a2b] text-white min-h-[90vh] flex items-center overflow-hidden"
       >
         {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {/* Gradient orbs */}
-          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl opacity-0" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-0" style={{ animation: 'pulse 3s ease-in-out infinite 1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl opacity-0" style={{ animation: 'pulse 3s ease-in-out infinite 2s' }} />
         </div>
 
         {/* Main content */}
@@ -103,11 +103,11 @@ const HomePage = () => {
 
               {/* Sorting visualization bars floating around */}
               <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex gap-1">
-                <div className="w-3 h-12 bg-blue-400 rounded animate-pulse" />
-                <div className="w-3 h-16 bg-purple-400 rounded animate-pulse" style={{ animationDelay: '0.2s' }} />
-                <div className="w-3 h-8 bg-pink-400 rounded animate-pulse" style={{ animationDelay: '0.4s' }} />
-                <div className="w-3 h-20 bg-cyan-400 rounded animate-pulse" style={{ animationDelay: '0.6s' }} />
-                <div className="w-3 h-14 bg-green-400 rounded animate-pulse" style={{ animationDelay: '0.8s' }} />
+                <div className="w-3 h-12 bg-blue-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
+                <div className="w-3 h-16 bg-purple-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite 0.2s' }} />
+                <div className="w-3 h-8 bg-pink-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite 0.4s' }} />
+                <div className="w-3 h-20 bg-cyan-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite 0.6s' }} />
+                <div className="w-3 h-14 bg-green-400 opacity-0" style={{ animation: 'pulse 2s ease-in-out infinite 0.8s' }} />
               </div>
             </div>
           </div>
