@@ -19,6 +19,10 @@ const ProgressSchema = new mongoose.Schema({
   // to pace milestones "in between"
   turnsAtStart: { type: Number, default: 0 },
   qualityTurns: { type: Number, default: 0 }, // Only counts turns with good understanding
+  
+  // Puzzle completion tracking
+  completedPuzzles: [{ type: String }], // Array of puzzle IDs (e.g., ["sel_puzzle_1", "sel_puzzle_2"])
+  allPuzzlesCompleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 ProgressSchema.index({ userId: 1, algorithm: 1 }, { unique: true });

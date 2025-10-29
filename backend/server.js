@@ -671,6 +671,165 @@ app.get("/api/user/sessions", requireAuth, async (req, res) => {
   }
 });
 
+// Generate hint based on last LLM response
+app.post("/api/generate-hint", requireAuth, async (req, res) => {
+  try {
+    const { lastMessage, algorithm } = req.body;
+
+    if (!lastMessage) {
+      return res.json({ success: false, hint: '' });
+    }
+
+    // Use LLM to generate a short hint
+    const hintPrompt = `Based on this tutor message about ${algorithm}:
+
+"${lastMessage}"
+
+Generate ONE short hint (max 15 words) to help the student respond or think about the next step. The hint should be encouraging and guide them toward understanding.
+
+Return ONLY the hint text, no extra formatting or explanation.`;
+
+    const ollamaResponse = await axios.post(
+      "http://localhost:11434/api/generate",
+      {
+        model: "llama3.1:8b",
+        prompt: hintPrompt,
+        stream: false,
+      }
+    );
+
+    const hint = (ollamaResponse.data?.response || '').trim();
+    
+    res.json({ 
+      success: true, 
+      hint: hint || 'Think about what you just learned and try to explain it in your own words.'
+    });
+  } catch (error) {
+    console.error("Hint generation error:", error);
+    res.json({ 
+      success: true, 
+      hint: 'Try explaining the concept in your own words or ask a question!'
+    });
+  }
+});
+
+// Get completed puzzles for an algorithm
+app.get("/api/puzzle/completed/:algorithm", requireAuth, async (req, res) => {
+  try {
+    const { algorithm } = req.params;
+    const userId = req.userId;
+
+    const progress = await Progress.findOne({ userId, algorithm });
+    
+    if (!progress) {
+      return res.json({ 
+        success: true, 
+        completedPuzzles: [],
+        allPuzzlesCompleted: false
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      completedPuzzles: progress.completedPuzzles || [],
+      allPuzzlesCompleted: progress.allPuzzlesCompleted || false
+    });
+  } catch (error) {
+    console.error("Fetch completed puzzles error:", error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Check puzzle solution using LLM
+app.post("/api/puzzle/check", requireAuth, async (req, res) => {
+  try {
+    const { algorithm, puzzleId, userCode, solution, testCases } = req.body;
+    const userId = req.userId;
+
+    if (!userCode || !solution) {
+      return res.json({ success: false, isCorrect: false, feedback: 'Code is required' });
+    }
+
+    // Use LLM to evaluate the code
+    const evalPrompt = `You are a code evaluation expert. Compare the user's code with the expected solution.
+
+EXPECTED SOLUTION:
+${solution}
+
+USER'S CODE:
+${userCode}
+
+Evaluate if the user's code is functionally correct and solves the same problem as the expected solution.
+The code doesn't need to be identical, but it should implement the same logic and handle edge cases.
+
+Return ONLY a JSON object (no other text) with these exact keys:
+{
+  "isCorrect": true or false,
+  "feedback": "Brief explanation of what's right or wrong",
+  "hint": "A helpful hint if the code is incorrect (or empty string if correct)"
+}`;
+
+    const ollamaResponse = await axios.post(
+      "http://localhost:11434/api/generate",
+      {
+        model: "llama3.1:8b",
+        prompt: evalPrompt,
+        stream: false,
+      }
+    );
+
+    const responseText = ollamaResponse.data?.response || '';
+    
+    // Parse LLM response
+    let evaluation;
+    try {
+      const start = responseText.indexOf('{');
+      const end = responseText.lastIndexOf('}');
+      if (start >= 0 && end >= 0) {
+        evaluation = JSON.parse(responseText.slice(start, end + 1));
+      } else {
+        evaluation = { isCorrect: false, feedback: 'Could not evaluate code', hint: 'Try again' };
+      }
+    } catch (parseErr) {
+      console.error('Parse error:', parseErr);
+      evaluation = { isCorrect: false, feedback: 'Could not evaluate code', hint: 'Try again' };
+    }
+
+    // If correct, award XP and mark puzzle as completed
+    if (evaluation.isCorrect) {
+      const contextId = `algo:${algorithm}`;
+      const session = await Session.findOne({ userId, contextId });
+      
+      if (session) {
+        session.xp = (session.xp || 0) + 200; // Puzzle XP reward
+        await session.save();
+        console.log(`🎮 Puzzle solved! +200 XP awarded to userId=${userId} for ${algorithm}`);
+      }
+
+      // Mark puzzle as completed in progress
+      const progress = await Progress.findOne({ userId, algorithm });
+      if (progress) {
+        // Add puzzle ID to completedPuzzles if not already there
+        if (!progress.completedPuzzles.includes(puzzleId)) {
+          progress.completedPuzzles.push(puzzleId);
+          await progress.save();
+          console.log(`✅ Puzzle ${puzzleId} marked as completed for ${algorithm}`);
+        }
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      isCorrect: evaluation.isCorrect,
+      feedback: evaluation.feedback,
+      hint: evaluation.hint
+    });
+  } catch (error) {
+    console.error("Puzzle check error:", error);
+    res.status(500).json({ success: false, isCorrect: false, feedback: 'Error checking solution' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}`);

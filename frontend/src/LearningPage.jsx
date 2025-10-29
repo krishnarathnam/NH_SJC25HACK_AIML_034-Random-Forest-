@@ -14,6 +14,7 @@ import InsertionSortVisualizer from './components/InsertionSortVisualizer.jsx'
 import MergeSortVisualizer from './components/MergeSortVisualizer.jsx'
 import QuickSortVisualizer from './components/QuickSortVisualizer.jsx'
 import HeapSortVisualizer from './components/HeapSortVisualizer.jsx'
+import PuzzleMode from './components/PuzzleMode.jsx'
 import algorithmData from './data/algorithmData.js'
 import useSpeechRecognition from './hooks/useSpeechRecognition.js'
 import { authenticatedFetch, getAccessToken } from './utils/auth.js'
@@ -31,6 +32,13 @@ const LearningPage = ({ setXpData }) => {
   const [notesOpen, setNotesOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [visualizerOpen, setVisualizerOpen] = useState(false);
+  const [puzzleOpen, setPuzzleOpen] = useState(false);
+  
+  // Auto-hint feature states
+  const [showHintPrompt, setShowHintPrompt] = useState(false);
+  const [currentHint, setCurrentHint] = useState('');
+  const [showHint, setShowHint] = useState(false);
+  const [lastBotMessage, setLastBotMessage] = useState('');
 
   useEffect(() => {
     async function fetchHistory() {
@@ -91,6 +99,29 @@ const LearningPage = ({ setXpData }) => {
   
   const { supported, isListening, text, start, stop, reset } = useSpeechRecognition({ language })
   useEffect(() => { if (text) setUserInput(text) }, [text])
+
+  // Auto-hint timer: Show hint prompt after 15 seconds of inactivity
+  useEffect(() => {
+    if (!lastBotMessage || userInput.trim().length > 0) {
+      // Don't show hint if user is typing
+      setShowHintPrompt(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowHintPrompt(true);
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, [lastBotMessage, userInput]);
+
+  // Hide hint when user starts typing
+  useEffect(() => {
+    if (userInput.trim().length > 0) {
+      setShowHint(false);
+      setShowHintPrompt(false);
+    }
+  }, [userInput]);
 
   // Fetch session XP/level data on mount
   useEffect(() => {
@@ -167,8 +198,42 @@ const LearningPage = ({ setXpData }) => {
   const algorithm =
     algorithmData[currentAlgorithm] || algorithmData["Selection Sort"];
 
+  // Generate hint based on last bot message
+  const generateHint = async () => {
+    if (!lastBotMessage) return;
+
+    try {
+      const token = getAccessToken();
+      const response = await fetch("http://localhost:3001/api/generate-hint", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          lastMessage: lastBotMessage,
+          algorithm: currentAlgorithm
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.hint) {
+        setCurrentHint(data.hint);
+        setShowHint(true);
+        setShowHintPrompt(false);
+      }
+    } catch (error) {
+      console.error('Failed to generate hint:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!userInput.trim()) return;
+
+    // Hide hints when user sends a message
+    setShowHintPrompt(false);
+    setShowHint(false);
+    setCurrentHint('');
 
     // capture before clearing
     const toSend = userInput.trim();
@@ -222,6 +287,14 @@ const LearningPage = ({ setXpData }) => {
               : msg
           )
         );
+
+        // Store last bot message for hint generation
+        setLastBotMessage(data.response);
+        
+        // Hide any existing hints when new message arrives
+        setShowHintPrompt(false);
+        setShowHint(false);
+        setCurrentHint('');
 
         // Trigger XP peekaboo animation
         if (typeof data.xpGain === 'number' && data.xpGain > 0) {
@@ -333,24 +406,66 @@ const LearningPage = ({ setXpData }) => {
             />
           </div>
           
-          {/* Visualizer Button - Show for all sorting algorithms */}
+          {/* Action Buttons - Show for all sorting algorithms */}
           {(currentAlgorithm === "Selection Sort" || 
             currentAlgorithm === "Bubble Sort" || 
             currentAlgorithm === "Insertion Sort" ||
             currentAlgorithm === "Merge Sort" ||
             currentAlgorithm === "Quick Sort" ||
             currentAlgorithm === "Heap Sort") && (
-            <button
-              onClick={() => setVisualizerOpen(true)}
-              className="btn-pixel text-[#023047] ml-auto"
-              title={`Open ${currentAlgorithm} Visualizer`}
-            >
-              VISUALIZE
-            </button>
+            <div className="ml-auto flex gap-3">
+              <button
+                onClick={() => setPuzzleOpen(true)}
+                className="btn-pixel bg-gradient-to-r from-[#FF6B35] to-[#F7931E] text-white hover:from-[#F7931E] hover:to-[#FF6B35]"
+                title={`Puzzle Mode for ${currentAlgorithm}`}
+              >
+                🎮 PUZZLE
+              </button>
+              <button
+                onClick={() => setVisualizerOpen(true)}
+                className="btn-pixel text-[#023047]"
+                title={`Open ${currentAlgorithm} Visualizer`}
+              >
+                VISUALIZE
+              </button>
+            </div>
           )}
         </div>
 
         <ChatMessages messages={chatMessages} />
+
+        {/* Auto-Hint Feature */}
+        <div className="relative">
+          {/* Hint Prompt Button */}
+          {showHintPrompt && !showHint && (
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 animate-fade-in">
+              <button
+                onClick={generateHint}
+                className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-800 px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 font-semibold text-sm"
+              >
+                💡 Hint?
+              </button>
+            </div>
+          )}
+
+          {/* Hint Display */}
+          {showHint && currentHint && (
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 animate-fade-in">
+              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 shadow-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-xl">💡</span>
+                  <p className="text-sm text-gray-800 flex-1">{currentHint}</p>
+                  <button
+                    onClick={() => setShowHint(false)}
+                    className="text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <InputBar
           inputMode={inputMode}
@@ -409,6 +524,35 @@ const LearningPage = ({ setXpData }) => {
           onClose={() => setVisualizerOpen(false)}
         />
       )}
+
+      {/* Puzzle Mode - Available for all algorithms */}
+      <PuzzleMode
+        isOpen={puzzleOpen}
+        onClose={() => setPuzzleOpen(false)}
+        algorithm={currentAlgorithm}
+        onXPUpdate={async (xpGained) => {
+          // Refresh session data to get updated XP
+          try {
+            const res = await authenticatedFetch(
+              `http://localhost:3001/api/session/${contextId}`
+            );
+            const data = await res.json();
+            
+            if (setXpData) {
+              setXpData({
+                xpLevel: data.xpLevel,
+                currentLevelXP: data.currentLevelXP,
+                xpForNextLevel: data.xpForNextLevel,
+                totalXP: data.totalXP
+              });
+            }
+            
+            console.log(`🎮 Puzzle completed! +${xpGained} XP. Total: ${data.totalXP}`);
+          } catch (error) {
+            console.error('Failed to refresh XP:', error);
+          }
+        }}
+      />
     </div>
   );
 };
